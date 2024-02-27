@@ -1,5 +1,4 @@
 import { ethers } from "hardhat";
-const helpers = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 
 const main = async () => {
   const USDCAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
@@ -9,16 +8,14 @@ const main = async () => {
 
   const USDCHolder = "0xf584f8728b874a6a5c7a8d4d387c9aae9172d621";
 
-  await helpers.impersonateAccount(USDCHolder);
   const impersonatedSigner = await ethers.getImpersonatedSigner(USDCHolder);
 
-  const amountDesUSDC = ethers.parseUnits("900", 6);
-  const amountDesDAI = ethers.parseUnits("400", 18);
+  const amountDesUSDC = ethers.parseUnits("1000", 6);
+  const amountDesDAI = ethers.parseUnits("500", 18);
 
-
-// Get USDC< DAI AND UNISWAP CONTRACT
   const USDC = await ethers.getContractAt("IERC20", USDCAddress);
   const DAI = await ethers.getContractAt("IERC20", DAIAddress);
+
   const ROUTER = await ethers.getContractAt("IUniswap", UNIRouter);
 
   const approveTx = await USDC.connect(impersonatedSigner).approve(
@@ -33,8 +30,6 @@ const main = async () => {
   );
   await approveTx2.wait();
 
-  console.log("-------------------------------Balance before swap----------------------------------")
-
   const usdcBal = await USDC.balanceOf(impersonatedSigner.address);
   const daiBal = await DAI.balanceOf(impersonatedSigner.address);
 
@@ -42,8 +37,6 @@ const main = async () => {
   console.log("DAI Balance:", ethers.formatUnits(daiBal, 18));
 
   const deadline = Math.floor(Date.now() / 1000) + 60 * 10;
-
-  console.log("-------------------------------Adding liquidity----------------------------------")
 
   const swapTx = await ROUTER.connect(impersonatedSigner).addLiquidity(
     USDCAddress,
@@ -57,6 +50,19 @@ const main = async () => {
   );
 
   await swapTx.wait();
+
+  const swapTxRemv = await ROUTER.connect(impersonatedSigner).removeLiquidity(
+    USDCAddress,
+    DAIAddress,
+    amountDesUSDC,
+    amountDesDAI,
+    1,
+    1,
+    impersonatedSigner.address,
+    deadline
+  );
+
+  await swapTxRemv.wait();
 
   const usdcBalAfterSwap = await USDC.balanceOf(impersonatedSigner.address);
   const daiBalAfterSwap = await DAI.balanceOf(impersonatedSigner.address);
